@@ -1,0 +1,54 @@
+{
+  "_comment": "Copy to config.json and edit per client. country=AE for Dubai, IN for India. usd_to_currency: AED=3.67, INR=83.5.",
+  "client": "Creek Bay",
+  "project": "Creek Bay at Dubai Creek Harbour",
+  "developer": "Emaar",
+  "country": "AE",
+  "currency": "AED",
+  "usd_to_currency": 3.67,
+
+  "own": {
+    "instagram_url": "https://www.instagram.com/emaardubai/",
+    "facebook_url": "https://www.facebook.com/emaardubai",
+    "youtube_channel_id": "UCmLHH1rBEEGNhvR8iFZhBgw",
+    "youtube_query_fallback": "Emaar Dubai",
+    "is_corporate_handle": true,
+    "note": "Emaar handles are CORPORATE/group-level (cover dozens of projects), NOT project-specific. If true, FLAG all organic numbers as group-level, not project-attributed."
+  },
+
+  "meta_self_term": "Creek Bay Dubai Creek Harbour",
+
+  "competitors": [
+    {"name": "Sobha Hartland II", "developer": "Sobha", "meta_term": "Sobha Hartland II", "yt_query": "Sobha Realty"},
+    {"name": "One River Point", "developer": "Ellington", "meta_term": "One River Point Ellington", "yt_query": "Ellington Properties Dubai"},
+    {"name": "The Crest", "developer": "Sobha", "meta_term": "The Crest Sobha Hartland", "yt_query": "Sobha Realty"},
+    {"name": "Peninsula Residences", "developer": "Select Group", "meta_term": "Peninsula Residences Business Bay", "yt_query": "Select Group Dubai"},
+    {"name": "Canal Heights", "developer": "DAMAC", "meta_term": "Canal Heights DAMAC", "yt_query": "DAMAC Properties"},
+    {"name": "Bluewaters Residences", "developer": "Meraas", "meta_term": "Bluewaters Residences Dubai", "yt_query": "Meraas Dubai"},
+    {"name": "Jumeirah Living BB", "developer": "Select Group", "meta_term": "Jumeirah Living Business Bay", "yt_query": "Select Group Dubai"},
+    {"name": "Como Residences Palm", "developer": "Nakheel", "meta_term": "Como Residences Palm Jumeirah", "yt_query": "Nakheel"},
+    {"name": "Mr C Residences", "developer": "Alta", "meta_term": "Mr C Residences Jumeirah", "yt_query": "Alta Real Estate Dubai"},
+    {"name": "Bugatti Residences", "developer": "Binghatti", "meta_term": "Bugatti Residences Binghatti", "yt_query": "Binghatti Developers"}
+  ],
+
+  "cpc_keywords": [
+    "dubai creek harbour", "creek bay dubai", "emaar creek harbour",
+    "apartments dubai creek harbour", "sobha hartland", "canal heights dubai",
+    "bluewaters residences", "bugatti residences", "off plan dubai",
+    "waterfront apartments dubai", "golden visa property dubai"
+  ],
+
+  "press_brands": [
+    "Creek Bay Dubai Creek Harbour Emaar", "Emaar Dubai Creek Harbour",
+    "Sobha Hartland II Dubai", "Bluewaters Residences Meraas Dubai",
+    "Bugatti Residences Binghatti Dubai", "Como Residences Palm Jumeirah Nakheel"
+  ],
+
+  "trend_queries": {
+    "district": "Dubai Creek Harbour real estate 2026 waterfront market",
+    "segment": "Dubai luxury branded residences market 2026 demand",
+    "offplan": "Dubai off-plan apartment market 2026 investor"
+  },
+
+  "apify_cap": 30
+}
