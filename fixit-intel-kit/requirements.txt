@@ -1,0 +1,4 @@
+apify-client>=3.0
+python-dotenv>=1.0
+# stdlib used otherwise: urllib, json, ssl, statistics, re (no extra installs)
+# Node.js (any recent) is used only to validate the dashboard's embedded JS: `node --check`
