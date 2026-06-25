@@ -64,23 +64,37 @@ except Exception as e:
 # --- seodata (anonymous, no key) ---
 print("\n[ seodata.dev — keyword CPC (anonymous) ]")
 try:
-    d = get("https://app.seodata.dev/v1/keyword?q=dubai+real+estate&country=ae")
+    import urllib.error
+    req_sd = urllib.request.Request(
+        "https://app.seodata.dev/v1/keyword?q=dubai+real+estate&country=ae",
+        headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+    ctx = ssl.create_default_context()
+    with urllib.request.urlopen(req_sd, timeout=10, context=ctx) as r:
+        d = json.loads(r.read())
     if d.get("volume") is not None:
         print(f"  {PASS} Reachable — volume: {d['volume']}, CPC: {d.get('cpc','?')}")
     else:
-        print(f"  {WARN} Reachable but rate-limited — register at seodata.dev for 500/mo")
+        print(f"  {WARN} Reachable but rate-limited — register at seodata.dev for 500/mo free quota")
     results["seodata"] = True
+except urllib.error.HTTPError as e:
+    if e.code == 403:
+        print(f"  {WARN} 403 — anonymous tier is now blocked. Register free at https://app.seodata.dev to get 500 queries/mo")
+        print(f"         CPC data will show 'unavailable' in the dashboard but all other scripts still run fine.")
+    else:
+        print(f"  {FAIL} HTTP {e.code}")
+    results["seodata"] = "warn"
 except Exception as e:
     print(f"  {FAIL} {e}")
     results["seodata"] = False
 
 # --- Summary ---
 print("\n─────────────────────────────────")
-ok = sum(results.values())
-total = len(results)
-print(f"  {ok}/{total} APIs reachable")
-if ok == total:
-    print(f"  {PASS} All good — you can run the full pipeline\n")
+hard_ok = sum(1 for v in results.values() if v is True)
+warned  = sum(1 for v in results.values() if v == "warn")
+failed  = [k for k, v in results.items() if v is False]
+total   = len(results)
+print(f"  {hard_ok}/{total} APIs fully working  |  {warned} warning(s)")
+if not failed:
+    print(f"  {PASS} Ready to run the full pipeline (seodata CPC optional)\n")
 else:
-    failed = [k for k, v in results.items() if not v]
-    print(f"  {WARN} Fix these before running scripts: {', '.join(failed)}\n")
+    print(f"  {FAIL} Fix these before running scripts: {', '.join(failed)}\n")

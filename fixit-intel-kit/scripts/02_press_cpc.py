@@ -44,12 +44,19 @@ for k in C["cpc_keywords"]:
     enc = urllib.parse.quote(k); row = None
     for attempt in range(3):
         try:
-            with urllib.request.urlopen(f"https://app.seodata.dev/v1/keyword?q={enc}&country={CC}", timeout=25) as r:
+            req_cpc = urllib.request.Request(
+                f"https://app.seodata.dev/v1/keyword?q={enc}&country={CC}",
+                headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+            with urllib.request.urlopen(req_cpc, timeout=25) as r:
                 d = json.loads(r.read())
             if "volume" in d:
                 row = d; print(f"{d.get('keyword','?')[:34]:34}{d.get('volume',0):>9}{str(d.get('cpc',0)):>7}{str(d.get('competition',0)):>6}"); break
+        except urllib.error.HTTPError as e:
+            if e.code == 403:
+                print(f"  ! seodata 403 — anonymous tier blocked; register at seodata.dev for 500/mo free"); break
+            pass
         except Exception: pass
         time.sleep(1.5)
-    cpc.append(row or {"keyword": k, "volume": None, "note": "rate-limited / no data"})
+    cpc.append(row or {"keyword": k, "volume": None, "note": "seodata-unavailable"})
     time.sleep(0.6)
 save("cpc.json", cpc)
