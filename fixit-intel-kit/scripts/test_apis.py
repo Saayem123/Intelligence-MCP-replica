@@ -61,40 +61,41 @@ except Exception as e:
     print(f"  {FAIL} {e}")
     results["apify"] = False
 
-# --- seodata (anonymous, no key) ---
-print("\n[ seodata.dev — keyword CPC (anonymous) ]")
+# --- seodata (API key) ---
+print("\n[ seodata.dev — keyword CPC ]")
 try:
     import urllib.error
+    sd_key = os.getenv("SEODATA_API_KEY", "")
+    hdrs = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
+    if sd_key:
+        hdrs["X-API-Key"] = sd_key
     req_sd = urllib.request.Request(
-        "https://app.seodata.dev/v1/keyword?q=dubai+real+estate&country=ae",
-        headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+        "https://app.seodata.dev/v1/keyword?q=dubai+real+estate&country=ae", headers=hdrs)
     ctx = ssl.create_default_context()
     with urllib.request.urlopen(req_sd, timeout=10, context=ctx) as r:
         d = json.loads(r.read())
     if d.get("volume") is not None:
-        print(f"  {PASS} Reachable — volume: {d['volume']}, CPC: {d.get('cpc','?')}")
+        print(f"  {PASS} Key valid — volume: {d['volume']}, CPC: ${d.get('cpc','?')}")
     else:
-        print(f"  {WARN} Reachable but rate-limited — register at seodata.dev for 500/mo free quota")
+        print(f"  {WARN} Reachable but no data returned")
     results["seodata"] = True
 except urllib.error.HTTPError as e:
     if e.code == 403:
-        print(f"  {WARN} 403 — anonymous tier is now blocked. Register free at https://app.seodata.dev to get 500 queries/mo")
-        print(f"         CPC data will show 'unavailable' in the dashboard but all other scripts still run fine.")
+        print(f"  {FAIL} 403 — SEODATA_API_KEY missing or invalid in .env")
     else:
         print(f"  {FAIL} HTTP {e.code}")
-    results["seodata"] = "warn"
+    results["seodata"] = False
 except Exception as e:
     print(f"  {FAIL} {e}")
     results["seodata"] = False
 
 # --- Summary ---
 print("\n─────────────────────────────────")
-hard_ok = sum(1 for v in results.values() if v is True)
-warned  = sum(1 for v in results.values() if v == "warn")
-failed  = [k for k, v in results.items() if v is False]
-total   = len(results)
-print(f"  {hard_ok}/{total} APIs fully working  |  {warned} warning(s)")
+ok     = sum(1 for v in results.values() if v is True)
+failed = [k for k, v in results.items() if v is False]
+total  = len(results)
+print(f"  {ok}/{total} APIs working")
 if not failed:
-    print(f"  {PASS} Ready to run the full pipeline (seodata CPC optional)\n")
+    print(f"  {PASS} All good — ready to run the full pipeline\n")
 else:
-    print(f"  {FAIL} Fix these before running scripts: {', '.join(failed)}\n")
+    print(f"  {FAIL} Fix these before running: {', '.join(failed)}\n")
