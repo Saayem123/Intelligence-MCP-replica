@@ -72,5 +72,5 @@ for who, cid, q in yt_targets:
 
 js = "const EX=[" + "".join(
     '\n  {who:"%s",src:"%s",pl:"%s",type:"%s",url:"%s",date:"%s",txt:"%s",theme:"%s",eng:"%s",s:"%s"},' % r for r in rows) + "\n];"
-(OUT / "ex_array.js").write_text(js)
+(OUT / "ex_array.js").write_text(js, encoding="utf-8")
 print(f"wrote out/ex_array.js — {len(rows)} source-linked rows")
