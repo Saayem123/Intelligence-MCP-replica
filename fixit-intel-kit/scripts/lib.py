@@ -22,11 +22,11 @@ def env(k, required=True):
     return v
 
 def save(name, obj):
-    (OUT / name).write_text(json.dumps(obj, indent=2, ensure_ascii=False))
+    (OUT / name).write_text(json.dumps(obj, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"  wrote out/{name}")
 
 def load(name):
-    return json.loads((OUT / name).read_text())
+    return json.loads((OUT / name).read_text(encoding="utf-8"))
 
 # Theme keyword buckets — tune per market if needed.
 THEMES = {
