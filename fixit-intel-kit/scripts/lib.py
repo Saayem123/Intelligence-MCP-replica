@@ -4,6 +4,15 @@ import os, json, sys
 from pathlib import Path
 from dotenv import load_dotenv
 
+# Windows consoles default to cp1252, which raises UnicodeEncodeError the moment a
+# script prints ·, ⚠, ✓, ₹, → etc. Force UTF-8 on stdout/stderr so the whole
+# pipeline can't crash on a progress print. Importing lib gives every script this fix.
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 ROOT = Path(__file__).resolve().parent.parent          # fixit-intel-kit/
 OUT  = ROOT / "out"
 OUT.mkdir(exist_ok=True)
@@ -13,7 +22,9 @@ def cfg():
     p = ROOT / "config.json"
     if not p.exists():
         sys.exit("ERROR: config.json not found. Copy config.example.json -> config.json and edit it.")
-    return json.loads(p.read_text())
+    # read_text() defaults to the OS locale (cp1252 on Windows) → corrupts non-ASCII config
+    # values like "·" into "Â·". Force UTF-8.
+    return json.loads(p.read_text(encoding="utf-8"))
 
 def env(k, required=True):
     v = os.getenv(k)

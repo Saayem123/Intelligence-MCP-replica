@@ -1,0 +1,113 @@
+{
+  "client": "Oberoi Realty",
+  "project": "Three Sixty North",
+  "developer": "Oberoi Realty",
+  "country": "IN",
+  "currency": "INR",
+  "usd_to_currency": 84,
+
+  "own": {
+    "instagram_url": "https://www.instagram.com/oberoirealty/",
+    "facebook_url": "https://www.facebook.com/oberoirealtyofficial",
+    "youtube_query_fallback": "Oberoi Realty Limited",
+    "is_corporate_handle": true
+  },
+
+  "meta_self_term": "Three Sixty North Oberoi Realty Gurugram",
+
+  "competitors": [
+    {
+      "name": "DLF Dahlias",
+      "developer": "DLF",
+      "meta_term": "DLF Dahlias Gurugram",
+      "yt_query": "DLF Limited"
+    },
+    {
+      "name": "Godrej Samaris",
+      "developer": "Godrej",
+      "meta_term": "Godrej Samaris Gurugram",
+      "yt_query": "Godrej Properties"
+    },
+    {
+      "name": "DLF Crest",
+      "developer": "DLF",
+      "meta_term": "DLF Crest Gurugram",
+      "yt_query": "DLF Limited"
+    },
+    {
+      "name": "DLF Arbour",
+      "developer": "DLF",
+      "meta_term": "DLF Arbour sector 63 Gurugram",
+      "yt_query": "DLF Limited"
+    },
+    {
+      "name": "M3M Elie Saab",
+      "developer": "M3M",
+      "meta_term": "M3M Elie Saab Gurugram",
+      "yt_query": "M3M India"
+    },
+    {
+      "name": "Smart World Trump Tower",
+      "developer": "Smart World",
+      "meta_term": "Smart World Trump Tower Gurugram",
+      "yt_query": "Smart World Developers"
+    }
+  ],
+
+  "cpc_keywords": [
+    "oberoi realty",
+    "dlf gurgaon",
+    "luxury apartments gurgaon",
+    "luxury flats gurgaon",
+    "apartments in gurgaon",
+    "property in gurgaon",
+    "m3m gurgaon",
+    "new projects in gurgaon",
+    "penthouse in gurgaon",
+    "godrej properties gurgaon"
+  ],
+
+  "press_brands": [
+    "Three Sixty North Oberoi Realty",
+    "Oberoi Realty Gurugram",
+    "DLF Dahlias Gurugram",
+    "Godrej Samaris Gurugram",
+    "DLF Crest Gurugram",
+    "DLF Arbour Gurugram",
+    "M3M Elie Saab Gurugram",
+    "Smart World Trump Tower Gurugram"
+  ],
+
+  "trend_queries": {
+    "district": "Sector 58 Gurugram luxury real estate 2025",
+    "segment": "ultra luxury residential India 2025",
+    "offplan": "under construction luxury apartments Gurugram 2025"
+  },
+
+  "apify_cap": 30,
+
+  "dashboard": {
+    "symbol": "₹",
+    "geo": "Gurugram",
+    "region": "Delhi NCR",
+    "sector_label": "Ultra Luxury · Sector 58, Gurugram",
+    "edge": "Developer pedigree + premium address",
+    "dont_fight_on": "Headline price vs DLF",
+    "priority_audience": "Delhi HNI + NRI / GCC",
+    "target_cpsv": "₹2,200 avg",
+    "whitespace": "Yield / NRI",
+    "top_rival_fallback": "DLF",
+    "demo_swaps": {
+      "Westin Residences": "Three Sixty North",
+      "Westin": "Three Sixty North",
+      "Marriott": "Oberoi",
+      "marriott": "oberoi",
+      "Sector 103": "Sector 58",
+      "Sector-103": "Sector-58",
+      "Dwarka Expressway": "Golf Course Road Ext.",
+      "Dwarka": "Gurugram",
+      "Central Park": "M3M",
+      "Krisumi": "Smart World"
+    }
+  }
+}

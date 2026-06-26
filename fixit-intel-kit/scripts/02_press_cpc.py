@@ -41,9 +41,12 @@ save("trends.json", trends)
 cpc = []
 print(f"\nCPC (seodata country={CC}) — USD; multiply by {C['usd_to_currency']} for {C['currency']}", flush=True)
 print(f"{'KEYWORD':34}{'VOL':>9}{'CPC$':>7}{'COMP':>6}")
+import urllib.error
 for k in C["cpc_keywords"]:
     enc = urllib.parse.quote(k); row = None
-    for attempt in range(3):
+    # seodata rate-limits in bursts: back off exponentially and honor Retry-After on 429,
+    # otherwise we drop keywords that actually have data. 5 tries, 2→4→8→16s.
+    for attempt in range(5):
         try:
             hdrs = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
             if SD:
@@ -57,9 +60,13 @@ for k in C["cpc_keywords"]:
         except urllib.error.HTTPError as e:
             if e.code == 403:
                 print(f"  ! seodata 403 — check SEODATA_API_KEY in .env"); break
-            pass
+            if e.code == 429:                       # rate limited — wait the server-advised time
+                wait = int(e.headers.get("Retry-After") or 0) or (2 ** (attempt + 1))
+                time.sleep(min(wait, 20)); continue
         except Exception: pass
-        time.sleep(1.5)
+        time.sleep(2 ** (attempt + 1))              # 2,4,8,16s exponential backoff
+    if row is None:
+        print(f"  ! {k[:34]:34} seodata-unavailable (rate-limited after retries)")
     cpc.append(row or {"keyword": k, "volume": None, "note": "seodata-unavailable"})
-    time.sleep(0.6)
+    time.sleep(1.2)                                 # gentler spacing between keywords
 save("cpc.json", cpc)

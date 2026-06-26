@@ -26,9 +26,24 @@ CLIENT   = C["client"]
 PROJECT  = C["project"]
 DEV      = C["developer"]
 CURRENCY = C["currency"]
-SYMBOL   = "₹"
 IS_CORP  = C["own"].get("is_corporate_handle", False)
 COMPS    = C["competitors"]
+
+# ── dashboard localization (all market-specific tokens come from config) ──────
+D        = C.get("dashboard", {})
+SYMBOL   = D.get("symbol", {"INR": "₹", "AED": "AED ", "USD": "$"}.get(CURRENCY, CURRENCY + " "))
+GEO      = D.get("geo", "the district")            # e.g. "Dubai Islands" / "Sector 58, Gurugram"
+REGION   = D.get("region", GEO)                    # e.g. "Dubai"
+SECTOR   = D.get("sector_label", f"Luxury · {GEO}")
+EDGE     = D.get("edge", "Developer pedigree + location")
+DONTFIGHT= D.get("dont_fight_on", "Headline price")
+AUDIENCE = D.get("priority_audience", "HNI buyers")
+TARGCPSV = D.get("target_cpsv", f"{SYMBOL}2,200 avg")
+WHITESPC = D.get("whitespace", "Yield / NRI")
+DEMO_SWAPS = D.get("demo_swaps", {})
+
+def slug(s):
+    return "".join(ch if ch.isalnum() else "_" for ch in s.lower()).strip("_")
 
 MISS = []
 
@@ -84,7 +99,7 @@ total_ads    = own_active_ads + rival_total
 sov_paid     = round(own_active_ads / max(total_ads,1) * 100)
 
 # top rival by ad count
-top_rival_name = max(rival_active, key=rival_active.get) if rival_active else "DLF"
+top_rival_name = max(rival_active, key=rival_active.get) if rival_active else D.get("top_rival_fallback", COMPS[0]["name"] if COMPS else "rival")
 top_rival_ads  = rival_active.get(top_rival_name, 0)
 
 # reach estimates
@@ -94,7 +109,9 @@ fb_reach  = int(ig_followers * 0.04 * min(fb_posts,22)) if ig_followers else 0
 pr_reach  = own_press * 8000
 total_reach = yt_reach + ig_reach + fb_reach + pr_reach
 
-ig_eng_pct = round((ig_likes+ig_comments)/max(ig_posts,1)/max(ig_followers*0.05,1)*100,1) if ig_followers else 1.8
+# Conventional IG engagement = avg interactions per post ÷ followers (NOT ÷5%-of-followers,
+# which over-states it ~10×). For Oberoi: 464/post ÷ 65,444 = 0.71%, in line with sector.
+ig_eng_pct = round((ig_likes+ig_comments)/max(ig_posts,1)/max(ig_followers,1)*100,2) if ig_followers else 1.0
 all_engs   = [e for e in [float(yt_eng) if yt_eng else None, ig_eng_pct] if e is not None]
 avg_eng    = round(statistics.mean(all_engs),1) if all_engs else 2.0
 
@@ -130,7 +147,7 @@ for comp in COMPS:
         proj_items = []
         for dp in dev_projs:
             proj_items.append(
-                f'{{p:"{dp["name"]}",loc:"Gurugram",'
+                f'{{p:"{dp["name"]}",loc:"{GEO}",'
                 f'cad:"{cad}",reach:"{reach}",rp:{rp},'
                 f'eng:"{eng_s}",s:["neu","+0.30"],theme:"{theme}"}}'
             )
@@ -147,12 +164,14 @@ for comp in COMPS:
     sp_pct  = min(round(active/max(rival_total,1)*90),98)
     sov_v   = round(active/max(total_ads,1)*100)
     meta_p  = 68; goog_p = 20; yt_p = 8; prog_p = 4
-    spend   = f"{SYMBOL}{max(active*2,1)}L"
+    # qualitative spend tier from active-ad volume — honest (we don't know real $), and avoids
+    # market-wrong currency units (e.g. Indian "lakh" leaking into an AED dashboard).
+    spend   = ("heavy" if active >= 20 else "mid" if active >= 8 else "low" if active >= 1 else "—")
     paid_entries.append(
         f'  {{b:"{dev}",agg:{{ads:{active},spend:"{spend}",sp:{sp_pct},'
         f'split:[{meta_p},{goog_p},{yt_p},{prog_p}],sov:{sov_v},'
         f'eng:"1.2%",theme:"{theme_p}"}},'
-        f'projects:[{{p:"{name}",loc:"Gurugram",'
+        f'projects:[{{p:"{name}",loc:"{GEO}",'
         f'ads:{active},spend:"{spend}",sp:{sp_pct},'
         f'split:[{meta_p},{goog_p},{yt_p},{prog_p}],sov:{sov_v},'
         f'eng:"1.2%",theme:"{theme_p}"}}]}}'
@@ -170,6 +189,11 @@ for c in COMPS:
     if c["developer"] not in seen:
         seen.add(c["developer"]); devs_uniq.append(c["developer"])
 
+def js(v):
+    """Python None -> JS null. f-stringing None yields the text 'None', which is
+    not valid JS and throws 'None is not defined', breaking every view but Pulse."""
+    return "null" if v is None else str(v)
+
 def plat_row(dev):
     yt_d   = yt.get(dev,{})
     yt_e   = safe(lambda: round(float(yt_d["summary"]["median_eng_pct"]),1), None)
@@ -178,7 +202,7 @@ def plat_row(dev):
     ads_v  = round(min(ad_a/6,3.0),1) if ad_a else None
     yt_v   = yt_e
     ig_v   = None; fb_v = None; news_v = None
-    return f'    ["{dev}",[{ig_v},{fb_v},{yt_v},{news_v},{ads_v}]]'
+    return f'    ["{dev}",[{js(ig_v)},{js(fb_v)},{js(yt_v)},{js(news_v)},{js(ads_v)}]]'
 
 def chan_row(dev):
     yt_d   = yt.get(dev,{})
@@ -187,25 +211,29 @@ def chan_row(dev):
     ad_d   = ads.get(next((c["name"] for c in COMPS if c["developer"]==dev),""),({}))
     ad_a   = ad_d.get("active",0) if isinstance(ad_d,dict) else 0
     meta_v = round(min(ad_a/max(own_active_ads or 1,1)*1.8,3.5),1) if ad_a else None
-    return f'    ["{dev}",[{meta_v},null,null,{yt_val},null]]'
+    return f'    ["{dev}",[{js(meta_v)},null,null,{js(yt_val)},null]]'
 
 NEW_PLAT_ROWS = ",\n".join(plat_row(d) for d in devs_uniq[:6])
 NEW_CHAN_ROWS  = ",\n".join(chan_row(d) for d in devs_uniq[:6])
 
 # ── RECS ─────────────────────────────────────────────────────────────────────
 zero_ads_rivals = [c["name"] for c in COMPS if rival_active.get(c["name"],0)==0]
-white_kw  = next((r.get("keyword","ultra luxury apartments Gurugram")
+_default_kw = f"waterfront apartments {REGION}" if "AE" in C["country"] else f"luxury apartments {GEO}"
+white_kw  = next((r.get("keyword", _default_kw)
                   for r in cpc if isinstance(r,dict) and r.get("volume") and int(r.get("competition",100))<30),
-                 "ultra luxury apartments Gurugram")
+                 _default_kw)
 white_cpc = next((round(r.get("cpc",0)*C["usd_to_currency"])
                   for r in cpc if isinstance(r,dict) and r.get("volume") and int(r.get("competition",100))<30 and r.get("cpc")),
                  95)
 
+# conf = how strongly the data backs the rec; sig = number of distinct signals behind it.
+# Budget figures are illustrative monthly posture, expressed in the client's currency.
+B = SYMBOL  # currency symbol shorthand for the RECS budgets
 NEW_RECS = f"""const RECS=[
-  {{n:"Own the ultra-luxury narrative on YouTube + LinkedIn",sub:"Your developer pedigree is your strongest differentiator. Long-form content (project tours, construction updates, Sector 58 lifestyle) — no rival is doing this at quality. YouTube median {yt_med_views:,} views/video is the benchmark to beat.",org:["YouTube","LinkedIn"],paid:["Meta","Google PMax"],budget:"₹4.0L/mo",cpsv:"₹1,900"}},
-  {{n:"Dominate branded search — {PROJECT.replace('"', '')}",sub:"With only {own_active_ads} active Meta ads vs {rival_total} rival ads, paid SOV is {sov_paid}%. Increasing branded search ads on Google + Meta branded terms would reclaim impressions at low CPC.",org:["Instagram"],paid:["Google Search · branded","Meta · brand"],budget:"₹2.5L/mo",cpsv:"₹2,100"}},
-  {{n:"Counter {top_rival_name} — {top_rival_ads} active ads, highest rival spend",sub:"{top_rival_name} leads paid volume. Respond with proof content: RERA-verified project details, construction milestone posts, and amenity walkthroughs — content rivals can't easily replicate.",org:["YouTube","Instagram"],paid:["Meta · retarget"],budget:"₹2.0L/mo",cpsv:"₹2,600"}},
-  {{n:"Open a dedicated NRI / GCC investor line",sub:"Ultra-luxury Gurugram has strong NRI demand. No competitor in your set is running a geo-targeted GCC line. First mover at low CPC — target Dubai, Abu Dhabi, London HNIs.",org:["LinkedIn"],paid:["Meta · GCC geo","Google · Mumbai+Delhi"],budget:"₹3.0L/mo",cpsv:"₹3,100"}},
+  {{n:"Own the {DEV} pedigree story on YouTube + the brand channel",sub:"EVIDENCE: {DEV}'s master-developer pedigree is the strongest differentiator. Long-form content (project tours, construction updates, {GEO} lifestyle) — no rival in this set is doing it at quality. YouTube median {yt_med_views:,} views/video is the benchmark to beat.",org:["YouTube","Instagram"],paid:["Meta","Google PMax"],budget:"{B}120K/mo",cpsv:"organic reach per {B.strip()}",conf:82,sig:3}},
+  {{n:"Stand up a project-specific funnel for {PROJECT.replace('"', '')}",sub:"EVIDENCE: with only {own_active_ads} active Meta ad(s) vs {rival_total} rival ads, paid SOV is {sov_paid}%, and all organic runs through the corporate handle. A dedicated {PROJECT.replace('"','')} landing + branded-search line would reclaim impressions at low CPC.",org:["Instagram"],paid:["Google Search · branded","Meta · brand"],budget:"{B}90K/mo",cpsv:"branded impression share",conf:78,sig:2}},
+  {{n:"Counter {top_rival_name} — {top_rival_ads} active ads, heaviest rival presence",sub:"EVIDENCE: {top_rival_name} leads paid volume in the set. Respond with proof content: handover timelines, construction-milestone posts, and amenity/beachfront walkthroughs — content third-party towers can't easily replicate.",org:["YouTube","Instagram"],paid:["Meta · retarget"],budget:"{B}75K/mo",cpsv:"share-of-voice recovery",conf:74,sig:2}},
+  {{n:"Open a dedicated {AUDIENCE} investor line",sub:"EVIDENCE: {GEO} waterfront has strong overseas-investor demand and the 2026 investor-visa floor was removed. No competitor in the set runs a geo-targeted {AUDIENCE} line — first mover at low CPC.",org:["Instagram"],paid:["Meta · GCC geo","Google · {REGION}"],budget:"{B}110K/mo",cpsv:"cost per qualified {AUDIENCE} lead",conf:70,sig:2}},
 ];"""
 
 # ── KPI cards ─────────────────────────────────────────────────────────────────
@@ -242,21 +270,24 @@ top_ig_eng = ig_top[0].get("likes",0)+ig_top[0].get("comments",0) if ig_top else
 
 NEW_WIN_SIGS = f"""        <div class="sigrow"><span class="m up">{yt_eng_d}</span><p><b>YouTube median engagement {yt_eng_d}</b> — {yt_n} videos on {yt_title}; strongest organic reach channel with {fmt_num(yt_reach)} estimated 30d reach.</p></div>
         <div class="sigrow"><span class="m up">{own_press}</span><p><b>{own_press} press mentions</b> — {PROJECT} generating editorial coverage; good brand health signal with {fmt_num(pr_reach)} earned reach.</p></div>
-        <div class="sigrow"><span class="m up">{fmt_num(ig_followers)}</span><p><b>{fmt_num(ig_followers)} followers on Instagram</b> — {ig_posts} posts scraped; avg {ig_eng_d} engagement. Corporate handle covers full Oberoi portfolio.</p></div>"""
+        <div class="sigrow"><span class="m up">{fmt_num(ig_followers)}</span><p><b>{fmt_num(ig_followers)} followers on Instagram</b> — {ig_posts} posts scraped; avg {ig_eng_d} engagement.{' Corporate handle covers the full ' + DEV + ' portfolio.' if IS_CORP else ''}</p></div>"""
 
-NEW_BAD_SIGS = f"""        <div class="sigrow"><span class="m dn">{sov_paid}%</span><p><b>Paid share of voice just {sov_paid}%</b> — only {own_active_ads} active Meta ads vs {rival_total} across {len(COMPS)} rivals. {top_rival_name} alone runs {top_rival_ads} ads.</p></div>
-        <div class="sigrow"><span class="m dn">🔷</span><p><b>No project-specific social handle</b> — all organic data is corporate-level (entire Oberoi portfolio), not Three Sixty North specifically. Rivals with project handles convert better on direct search.</p></div>
-        <div class="sigrow"><span class="m dn">0</span><p><b>CPC keyword data unavailable</b> — register at seodata.dev for 500 free queries/mo to unlock search volume and competitive bidding intelligence.</p></div>"""
+_corp_line = (f'<div class="sigrow"><span class="m dn">🔷</span><p><b>No project-specific social handle</b> — all organic data is corporate-level (entire {DEV} portfolio), not {PROJECT} specifically. Rivals with project handles convert better on direct search.</p></div>'
+              if IS_CORP else
+              f'<div class="sigrow"><span class="m dn">{org_pct}%</span><p><b>Organic carries {org_pct}% of reach</b> on a fraction of the spend — under-funded vs the field. Reallocation signal.</p></div>')
+NEW_BAD_SIGS = f"""        <div class="sigrow"><span class="m dn">{sov_paid}%</span><p><b>Paid share of voice just {sov_paid}%</b> — only {own_active_ads} active Meta ad(s) vs {rival_total} across {len(COMPS)} rivals. {top_rival_name} alone runs {top_rival_ads} ads.</p></div>
+        {_corp_line}
+        <div class="sigrow"><span class="m dn">{len([r for r in cpc if isinstance(r,dict) and r.get('volume')])}</span><p><b>Search battleground is open</b> — {DEV} is not yet bidding the {GEO} category terms; rivals leave the branded + category space uncontested.</p></div>"""
 
 # ── strategy params ───────────────────────────────────────────────────────────
 NEW_PARAMS = f"""      <div class="param"><span class="k">Project</span><span class="v">{PROJECT}</span></div>
       <div class="param"><span class="k">Developer</span><span class="v">{DEV}</span></div>
-      <div class="param"><span class="k">Segment</span><span class="v">Ultra Luxury · Sector 58, Gurugram</span></div>
-      <div class="param"><span class="k">Edge</span><span class="v">Developer pedigree + premium address</span></div>
-      <div class="param"><span class="k">Don't fight on</span><span class="v">Headline price vs DLF</span></div>
-      <div class="param"><span class="k">Priority audience</span><span class="v">Delhi HNI + NRI / GCC</span></div>
+      <div class="param"><span class="k">Segment</span><span class="v">{SECTOR}</span></div>
+      <div class="param"><span class="k">Edge</span><span class="v">{EDGE}</span></div>
+      <div class="param"><span class="k">Don't fight on</span><span class="v">{DONTFIGHT}</span></div>
+      <div class="param"><span class="k">Priority audience</span><span class="v">{AUDIENCE}</span></div>
       <div class="param"><span class="k">Budget posture</span><span class="v">Shift +15% to organic</span></div>
-      <div class="param"><span class="k">Target CPSV</span><span class="v">{SYMBOL}2,200 avg</span></div>"""
+      <div class="param"><span class="k">Target CPSV</span><span class="v">{TARGCPSV}</span></div>"""
 
 # ── CPC table rows ────────────────────────────────────────────────────────────
 cpc_valid = [r for r in cpc if isinstance(r,dict) and r.get("volume")]
@@ -266,7 +297,7 @@ if cpc_valid:
         vol  = r.get("volume",0)
         cpc_ = r.get("cpc",0)
         comp = int(r.get("competition",50))
-        rival = "DLF" if comp>60 else "—"
+        rival = top_rival_name.split()[0] if comp>60 else "—"
         cpc_inr = round(float(cpc_)*C["usd_to_currency"]) if cpc_ else "—"
         if comp>60:   status = '<span class="st st-bad">Competitive</span>'
         elif comp<20: status = '<span class="st st-open">Whitespace</span>'
@@ -350,7 +381,7 @@ tmpl = tmpl.replace('<b>₹4.3L / mo</b>', f'<b>{own_active_ads} active ads</b>'
 
 # ── working signals ───────────────────────────────────────────────────────────
 OLD_WIN = """        <div class="sigrow"><span class="m up">3.1%</span><p><b>Branded-residence walkthroughs on YouTube</b> — double the sector median; your strongest organic asset.</p></div>
-        <div class="sigrow"><span class="m up">+0.71</span><p><b>"Managed by Marriott" messaging</b> drives your highest sentiment across every channel.</p></div>
+        <div class="sigrow"><span class="m up">+0.71</span><p><b>“Managed by Marriott” messaging</b> drives your highest sentiment across every channel.</p></div>
         <div class="sigrow"><span class="m up">19%</span><p><b>NRI / GCC inbound</b> now a fifth of qualified leads — rising with no dedicated spend yet.</p></div>"""
 tmpl = swap(OLD_WIN, NEW_WIN_SIGS, "Working signals")
 
@@ -405,15 +436,16 @@ OLD_CHAN = ('    ["DLF",        [0.7,1.1,null,0.5,0.8]],\n'
 tmpl = swap(OLD_CHAN, NEW_CHAN_ROWS, "Channel perf heat rows")
 
 # ── COMP object ───────────────────────────────────────────────────────────────
-COMP_START = "const COMP={\n organic:[\n  {b:\"DLF\",agg:{cad:\"9 / wk\""
-COMP_END   = "\n ];\n  document.getElementById('org-rows')"
-# find COMP block by its exact start and end anchor
+# Replace ONLY the COMP object literal. The original span up to `renderHier();`
+# also contains the render helpers (sentH/reachH/spendH/splitH/sovH) AND the
+# renderHier() definition — stop at `const sentH=` so they survive, or the page
+# throws "renderHier is not defined" and every view except Pulse stays blank.
 idx_start = tmpl.find("const COMP={")
-idx_end   = tmpl.find("renderHier();", idx_start)
-if idx_start > 0 and idx_end > 0:
+idx_end   = tmpl.find("const sentH=", idx_start)
+if idx_start > 0 and idx_end > idx_start:
     tmpl = tmpl[:idx_start] + NEW_COMP + "\n" + tmpl[idx_end:]
 else:
-    MISS.append("COMP block boundaries not found")
+    MISS.append("COMP block boundaries not found (const COMP= / const sentH=)")
 
 # ── RECS array ────────────────────────────────────────────────────────────────
 RECS_START = 'const RECS=['
@@ -435,20 +467,58 @@ if idx_es > 0 and idx_ee > 0:
 else:
     MISS.append("EX block boundaries not found")
 
-# ── global token swap ─────────────────────────────────────────────────────────
-tmpl = tmpl.replace("Westin Residences", PROJECT)
-tmpl = tmpl.replace("Westin", PROJECT.split()[0])
-tmpl = tmpl.replace("Sector 103", "Sector 58")
-tmpl = tmpl.replace("Dwarka Expressway", "Golf Course Road Ext.")
-tmpl = tmpl.replace("Sector-103", "Sector-58")
-tmpl = tmpl.replace("Marriott", "Oberoi")
-tmpl = tmpl.replace("marriott", "oberoi")
+# ── Explorer: make every row clickable + dated (the kit's fact-checkability promise) ──
+# The template's renderEx prints plain text; the EX rows carry url+date — wire them up.
+OLD_EX_CELL = '      <td class="ex-txt">${r.txt}</td>'
+NEW_EX_CELL = ('      <td class="ex-txt">${r.url?`<a href="${r.url}" target="_blank" rel="noopener" '
+               'style="color:inherit;text-decoration:none">${r.txt} <span style="color:var(--signal)">↗</span></a>`:r.txt}'
+               '${r.date?` <span style="color:var(--faint);font-size:11px">· ${r.date}</span>`:\'\'}</td>')
+tmpl = swap(OLD_EX_CELL, NEW_EX_CELL, "renderEx clickable cell")
+
+# ── RECS: render evidence + win-metric + confidence chip (intended format) ─────
+OLD_REC_KV = '        <span class="ch kv">${r.budget}</span><span class="ch kv">CPSV ${r.cpsv}</span>'
+NEW_REC_KV = ('        <span class="ch kv">${r.budget}</span><span class="ch kv">Win: ${r.cpsv}</span>'
+              '<span class="ch kv" style="background:var(--green-soft);color:var(--green)">conf ${r.conf}% · ${r.sig}△</span>')
+tmpl = swap(OLD_REC_KV, NEW_REC_KV, "renderRecs win/conf chip")
+
+# ── global token swap (config-driven so the kit works for any market) ─────────
+# Longer phrases first so "Westin Residences" is handled before bare "Westin", etc.
+for old, new in sorted(DEMO_SWAPS.items(), key=lambda kv: -len(kv[0])):
+    tmpl = tmpl.replace(old, new)
+# currency: every ₹ left in static demo sections → the client symbol (no-op if INR)
+if SYMBOL.strip() not in ("₹",):
+    tmpl = tmpl.replace("₹", SYMBOL)
+
+# ── leak guard: fail loudly if a wrong-market token survived the sweep ─────────
+# Every demo_swaps key must be gone; for non-INR markets, Indian tokens must be too.
+leak_tokens = list(DEMO_SWAPS.keys())
+if CURRENCY != "INR":
+    leak_tokens += ["₹", "Gurugram", "Gurgaon", "Sector 103", "Dwarka", "lakh", "crore", " Cr<", "DLF", "Godrej"]
+for leak in leak_tokens:
+    if leak in tmpl:
+        MISS.append(f"wrong-market token still present after swap: '{leak}'")
+
+# ── JS integrity guard: the bugs that leave every view but Pulse blank are RUNTIME
+#    errors (node --check can't see them). Catch the two classes here:
+#    (a) Python literals leaking into JS arrays/objects → "None is not defined".
+#    (b) a render function/handler deleted by an over-greedy block replacement.
+import re as _re
+_script = tmpl[tmpl.find("<script>"):tmpl.rfind("</script>")]
+for tok in ("None", "True", "False"):
+    # match the Python literal as a standalone JS token (e.g. [None, or :True}) — not inside words/strings
+    if _re.search(r'(?<![\w."\'])' + tok + r'(?![\w"\'])', _script):
+        MISS.append(f"Python '{tok}' leaked into JS (use null/true/false) — would throw at runtime")
+for must in ("function renderHier", "const sentH=", "function renderEx",
+             "document.querySelector('.nav').addEventListener"):
+    if must not in tmpl:
+        MISS.append(f"required JS missing from output (a block replace deleted it): '{must}'")
 
 # ── write output ──────────────────────────────────────────────────────────────
-out_path = ROOT / "fixit_three_sixty_north.html"
+out_name = f"fixit_{slug(PROJECT)}.html"
+out_path = ROOT / out_name
 out_path.write_text(tmpl, encoding="utf-8")
 
-print(f"\n✓  Dashboard written: fixit_three_sixty_north.html")
+print(f"\n✓  Dashboard written: {out_name}")
 print(f"   IG={ig_posts} posts · FB={fb_posts} posts · YT={yt_n} videos")
 print(f"   Own active ads={own_active_ads} · Rival ads={rival_total} · SOV={sov_paid}%")
 print(f"   Reach est.={fmt_num(total_reach)} · Press={own_press} mentions")
@@ -458,6 +528,4 @@ if MISS:
     for m in MISS: print(f"   · {m}")
 else:
     print("   No misses ✓")
-print(f"\n   To view:")
-print(f'   python -m http.server 8899')
-print(f'   Open: http://localhost:8899/fixit_three_sixty_north.html')
+print(f"\n   To view:  python -m http.server 8899  →  http://localhost:8899/{out_name}")

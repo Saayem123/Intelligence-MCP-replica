@@ -16,10 +16,6 @@ def api(path, **p):
             if a == 2: return {}
             time.sleep(1.2)
 
-def find_channel(q):
-    its = api("search", part="snippet", q=q, type="channel", maxResults=1).get("items", [])
-    return its[0]["snippet"]["channelId"] if its else None
-
 def channel_meta(cid):
     its = api("channels", part="snippet,statistics,contentDetails", id=cid).get("items", [])
     if not its: return None
@@ -28,6 +24,19 @@ def channel_meta(cid):
             "subs": int(it["statistics"].get("subscriberCount", 0)),
             "videoCount": int(it["statistics"].get("videoCount", 0)),
             "uploads": it["contentDetails"]["relatedPlaylists"].get("uploads")}
+
+def find_channel(q):
+    # The first search hit is often a tiny look-alike (e.g. "DLF Limited" → 193 subs,
+    # not DLF's real channel). Pull a few candidates and keep the one with the most subs —
+    # official developer channels dominate their own name.
+    its = api("search", part="snippet", q=q, type="channel", maxResults=5).get("items", [])
+    cands = [i["snippet"]["channelId"] for i in its]
+    if not cands: return None
+    best, best_subs = cands[0], -1
+    for cid in cands:
+        m = channel_meta(cid)
+        if m and m["subs"] > best_subs: best, best_subs = cid, m["subs"]
+    return best
 
 def recent(uploads, n=25):
     ids = [i["contentDetails"]["videoId"] for i in api("playlistItems", part="contentDetails", playlistId=uploads, maxResults=n).get("items", [])]

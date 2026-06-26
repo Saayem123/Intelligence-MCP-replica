@@ -24,6 +24,7 @@ def post(url, body, headers):
         return json.loads(r.read())
 
 results = {}
+warnings = []   # non-fatal blockers (e.g. low credit) surfaced in the summary
 
 # --- YouTube ---
 print("\n[ YouTube Data API v3 ]")
@@ -49,13 +50,29 @@ except Exception as e:
     print(f"  {FAIL} {e}")
     results["serper"] = False
 
-# --- Apify ---
+# --- Apify (key validity + REMAINING CREDIT — this is the paid one that runs out) ---
 print("\n[ Apify ]")
 try:
-    token = env("APIFY_TOKEN")
+    token  = env("APIFY_TOKEN")
+    token2 = os.getenv("APIFY_TOKEN2")
     d = get(f"https://api.apify.com/v2/users/me?token={token}")
     u = d.get("data", {})
     print(f"  {PASS} Token valid — user: {u.get('username','?')} | plan: {u.get('plan',{}).get('id','?')}")
+    # remaining monthly credit — a full ~7-target run at cap 30 costs ≈ $0.90
+    lim = get(f"https://api.apify.com/v2/users/me/limits?token={token}").get("data", {})
+    used = lim.get("current", {}).get("monthlyUsageUsd")
+    cap  = lim.get("limits", {}).get("maxMonthlyUsageUsd")
+    if used is not None and cap is not None:
+        left = cap - used
+        mark = PASS if left >= 1.0 else WARN
+        print(f"  {mark} Credit: ${used:.2f} used of ${cap:.2f} → ${left:.2f} left "
+              f"({'enough for a full run' if left >= 1.0 else 'LOW — a full run (~$0.90) may not finish'})")
+        if left < 1.0:
+            warnings.append(f"Apify credit low (${left:.2f} left) — top up or use a fresh token before 03_apify.py")
+    if token2 and token2 == token:
+        print(f"  {WARN} APIFY_TOKEN2 == APIFY_TOKEN — no real backup; the verification re-pull shares the same budget")
+    elif not token2:
+        print(f"  {WARN} APIFY_TOKEN2 not set — no backup token for the verification re-pull")
     results["apify"] = True
 except Exception as e:
     print(f"  {FAIL} {e}")
@@ -95,7 +112,11 @@ ok     = sum(1 for v in results.values() if v is True)
 failed = [k for k, v in results.items() if v is False]
 total  = len(results)
 print(f"  {ok}/{total} APIs working")
-if not failed:
-    print(f"  {PASS} All good — ready to run the full pipeline\n")
-else:
+for w in warnings:
+    print(f"  {WARN} {w}")
+if failed:
     print(f"  {FAIL} Fix these before running: {', '.join(failed)}\n")
+elif warnings:
+    print(f"  {WARN} Keys all valid, but resolve the warning(s) above before a full run\n")
+else:
+    print(f"  {PASS} All good — ready to run the full pipeline\n")

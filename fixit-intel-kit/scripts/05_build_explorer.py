@@ -27,9 +27,11 @@ except Exception: cm = {"instagram": []}
 rows = []
 
 for p in own.get("instagram", []):
-    c = esc(p["caption"]); rows.append(("you", f"{C['developer']} IG", "Instagram", "org", p["url"], "", c[:90] or "[image post]", "Brand", f"{p['likes']} likes", sent(c)))
+    c = esc(p["caption"]); likes = max(p.get("likes", 0), 0)
+    rows.append(("you", f"{C['developer']} IG", "Instagram", "org", p["url"], "", c[:90] or "[image post]", "Brand", f"{likes} likes", sent(c)))
 for p in own.get("facebook", []):
-    t = esc(p["text"]); rows.append(("you", f"{C['developer']} FB", "Facebook", "org", p["url"], "", t[:90] or "[post]", "Brand", f"{p['likes']} likes", sent(t)))
+    t = esc(p["text"]); likes = max(p.get("likes", 0), 0)
+    rows.append(("you", f"{C['developer']} FB", "Facebook", "org", p["url"], "", t[:90] or "[post]", "Brand", f"{likes} likes", sent(t)))
 seen = set()
 for c in cm.get("instagram", []):
     t = esc(c["text"]); cl = re.sub(r'[^a-zA-Z ]', '', t)
@@ -59,7 +61,15 @@ for who, cid, q in yt_targets:
     if q in seen_q: continue
     seen_q.add(q)
     if not cid:
-        cid = (yt("search", part="snippet", q=q, type="channel", maxResults=1).get("items", [{}])[0].get("snippet", {}).get("channelId"))
+        # pick the highest-subscriber candidate, not the first look-alike (see 01_youtube.find_channel)
+        cands = [i.get("snippet", {}).get("channelId") for i in yt("search", part="snippet", q=q, type="channel", maxResults=5).get("items", [])]
+        cands = [c for c in cands if c]
+        best, best_subs = None, -1
+        for c in cands:
+            its = yt("channels", part="statistics", id=c).get("items", [])
+            subs = int(its[0]["statistics"].get("subscriberCount", 0)) if its else 0
+            if subs > best_subs: best, best_subs = c, subs
+        cid = best
     if not cid: continue
     up = yt("channels", part="contentDetails", id=cid).get("items", [{}])[0].get("contentDetails", {}).get("relatedPlaylists", {}).get("uploads")
     if not up: continue

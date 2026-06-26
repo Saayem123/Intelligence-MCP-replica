@@ -17,8 +17,10 @@ NOISE = ["salon","saloon","beauty","nursery","kids","school","meat","grocery","s
 
 # EDIT THIS: competitors to re-resolve (name -> list of alternate search terms)
 ALT_TERMS = {
-    # "Peninsula Residences": ["Peninsula Business Bay", "Peninsula Select Group Dubai"],
-    # "Canal Heights": ["Canal Heights Cavalli", "DAMAC Canal Heights"],
+    "Edgewater Residences": ["Edgewater Dubai Islands", "MGS Development", "Edgewater Residences"],
+    "Shoaq Residences":     ["Shoaq Dubai Islands", "AveNew Developments", "Shoaq"],
+    "Sunset Bay":           ["Sunset Bay Dubai Islands", "Imtiaz Developments", "Imtiaz Dubai"],
+    "Silena":               ["Silena Dubai Islands", "AveNew Silena", "Silena AveNew"],
 }
 # EDIT THIS: heavy advertisers to re-pull uncapped (name -> term, higher cap)
 UNCAP = {

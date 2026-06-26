@@ -83,11 +83,11 @@ for name, term in targets:
 # --- own IG/FB posts, followers, comments ---
 own = {"instagram": [], "facebook": []}
 for r in run_actor("apify/instagram-scraper", {"directUrls": [C["own"]["instagram_url"]], "resultsType": "posts", "resultsLimit": 22, "addParentData": True}, label="ig"):
-    if r.get("url"): own["instagram"].append({"caption": (r.get("caption") or "")[:600], "likes": r.get("likesCount") or 0, "comments": r.get("commentsCount") or 0, "ts": r.get("timestamp"), "url": r["url"]})
+    if r.get("url"): own["instagram"].append({"caption": (r.get("caption") or "")[:600], "likes": max(r.get("likesCount") or 0, 0), "comments": max(r.get("commentsCount") or 0, 0), "ts": r.get("timestamp"), "url": r["url"]})
 if C["own"].get("facebook_url"):
     for r in run_actor("apify/facebook-posts-scraper", {"startUrls": [{"url": C["own"]["facebook_url"]}], "resultsLimit": 22}, label="fb"):
         u = r.get("url") or r.get("postUrl")
-        if u: own["facebook"].append({"text": (r.get("text") or r.get("message") or "")[:600], "likes": r.get("likes") or 0, "comments": r.get("comments") or 0, "ts": r.get("time") or r.get("date"), "url": u})
+        if u: own["facebook"].append({"text": (r.get("text") or r.get("message") or "")[:600], "likes": max(r.get("likes") or 0, 0), "comments": max(r.get("comments") or 0, 0), "ts": r.get("time") or r.get("date"), "url": u})
 save("own_brand.json", own)
 
 fol = {}
